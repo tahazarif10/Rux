@@ -10,6 +10,7 @@
 
 #include "Target/Platform.h"
 
+#include <array>
 #include <cstdint>
 #include <string_view>
 
@@ -122,6 +123,41 @@ inline constexpr CpuFeatures AVX512{1ull << 7};
 inline constexpr CpuFeatures NEON{1ull << 16};
 inline constexpr CpuFeatures SVE{1ull << 17};
 } // namespace CpuFeature
+
+/// One language-facing CPU feature name and the target bit it denotes. This is the canonical mapping used by
+/// compile-time target feature queries, so conditional evaluation and lowering cannot give the same name different
+/// meanings.
+struct CpuFeatureDefinition {
+    std::string_view name;
+    CpuFeatures feature;
+};
+
+inline constexpr std::array<CpuFeatureDefinition, 10> CpuFeatureDefinitions{{
+    {"AVX", CpuFeature::AVX},
+    {"AVX2", CpuFeature::AVX2},
+    {"AVX512", CpuFeature::AVX512},
+    {"NEON", CpuFeature::NEON},
+    {"SSE2", CpuFeature::SSE2},
+    {"SSE3", CpuFeature::SSE3},
+    {"SSE41", CpuFeature::SSE41},
+    {"SSE42", CpuFeature::SSE42},
+    {"SSSE3", CpuFeature::SSSE3},
+    {"SVE", CpuFeature::SVE},
+}};
+
+[[nodiscard]] constexpr const CpuFeatureDefinition *FindCpuFeature(const std::string_view name) noexcept {
+    for (const CpuFeatureDefinition &feature : CpuFeatureDefinitions) {
+        if (feature.name == name) {
+            return &feature;
+        }
+    }
+    return nullptr;
+}
+
+[[nodiscard]] constexpr bool HasCpuFeature(const CpuFeatures enabled, const std::string_view name) noexcept {
+    const CpuFeatureDefinition *feature = FindCpuFeature(name);
+    return feature && enabled.Has(feature->feature);
+}
 
 /// Minimum ISA promised by each supported output architecture. Compiler build flags and host detection describe
 /// the compiler process, not the machines on which an emitted portable executable may run.

@@ -31,16 +31,11 @@ func Main() -> int {
         Assert(false, "compiler does not satisfy minimum version");
     }
 
-    // TODO: the Compiler.HasFeature intrinsic is not yet implemented in the
-    // compiler — calling it crashes at load with STATUS_ENTRYPOINT_NOT_FOUND
-    // (0xC0000139). Re-enable these once the intrinsic links. Reading the plain
-    // fields of #compiler above already works.
-    // // A feature name the compiler does not recognize is reported absent rather
-    // // than raising anything.
-    // Assert(!#compiler.HasFeature("no-such-compiler-feature"), "unknown feature is absent");
-    // // The query is a pure function of its argument: asking the same thing twice
-    // // gives the same answer.
-    // Assert(#compiler.HasFeature("no-such-compiler-feature")
-    //     == #compiler.HasFeature("no-such-compiler-feature"), "deterministic");
+    Assert(#compiler.HasFeature("conditional-compilation"), "conditional compilation feature");
+    Assert(#compiler.HasFeature("when-attribute"), "when attribute feature");
+    // An unknown feature is absent rather than an error, and repeated queries agree.
+    Assert(!#compiler.HasFeature("no-such-compiler-feature"), "unknown feature is absent");
+    Assert(#compiler.HasFeature("no-such-compiler-feature")
+        == #compiler.HasFeature("no-such-compiler-feature"), "feature query is deterministic");
     return 0;
 }

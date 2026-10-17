@@ -77,13 +77,6 @@ constexpr std::array ObjectFormatVariants{"COFF", "ELF", "MachO"};
 constexpr std::array BuildModeVariants{"Debug", "Release"};
 constexpr std::array OptimizationVariants{"None", "Size", "Speed"};
 constexpr std::array OutputKindVariants{"Executable", "SharedLibrary", "StaticLibrary", "SourceLibrary"};
-constexpr std::array TargetFeatureVariants{"AVX",  "AVX2",  "AVX512", "NEON",  "SSE2",
-                                           "SSE3", "SSE41", "SSE42",  "SSSE3", "SVE"};
-constexpr std::array CompilerFeatures{
-    "conditional-compilation",    "namespaced-intrinsics",    "target-intrinsics",   "build-intrinsics",
-    "compiler-feature-detection", "source-location-defaults", "extern-symbol-names", "link-attribute",
-    "no-return-attribute",        "when-attribute"};
-
 template <std::size_t N>
 void RegisterVariants(std::unordered_map<std::string, std::vector<std::string>> &enums, const std::string &name,
                       const std::array<const char *, N> &variants) {
@@ -543,31 +536,6 @@ std::optional<std::string> ConditionalEvaluator::Impl::IntrinsicArgument(const I
     return std::nullopt;
 }
 
-bool ConditionalEvaluator::Impl::TargetHasFeature(const std::string_view name) const {
-    const Target::CpuFeatures features = context.target.cpu_features;
-    if (name == "SSE2")
-        return features.Has(Target::CpuFeature::SSE2);
-    if (name == "SSE3")
-        return features.Has(Target::CpuFeature::SSE3);
-    if (name == "SSSE3")
-        return features.Has(Target::CpuFeature::SSSE3);
-    if (name == "SSE41")
-        return features.Has(Target::CpuFeature::SSE41);
-    if (name == "SSE42")
-        return features.Has(Target::CpuFeature::SSE42);
-    if (name == "AVX")
-        return features.Has(Target::CpuFeature::AVX);
-    if (name == "AVX2")
-        return features.Has(Target::CpuFeature::AVX2);
-    if (name == "AVX512")
-        return features.Has(Target::CpuFeature::AVX512);
-    if (name == "NEON")
-        return features.Has(Target::CpuFeature::NEON);
-    if (name == "SVE")
-        return features.Has(Target::CpuFeature::SVE);
-    return false;
-}
-
 std::optional<std::string_view> ConditionalEvaluator::Impl::CompilerParamRoot(const Expr &expr) const {
     const auto *ident = AstCast<const IdentExpr>(&expr);
     if (!ident) {
@@ -799,15 +767,15 @@ std::optional<CompileTimeValue> ConditionalEvaluator::Impl::EvalCompilerParamCal
     // These match the method names the Rux package declares, which are
     // functions and so PascalCase; only the fields are lowerCamelCase.
     if (root == "Target" && member == "HasFeature") {
-        if (!std::ranges::contains(TargetFeatureVariants, name)) {
+        if (!Target::FindCpuFeature(name)) {
             EmitError(call.location, "unknown target feature '." + name + "'");
             reportedError = true;
             return std::nullopt;
         }
-        return Value{TargetHasFeature(name)};
+        return Value{Target::HasCpuFeature(context.target.cpu_features, name)};
     }
     if (root == "Compiler" && member == "HasFeature")
-        return Value{std::ranges::contains(CompilerFeatures, name)};
+        return Value{CompilerHasFeature(name)};
     if (root == "Config" && member == "Get") {
         const auto it = context.config.find(name);
         return Value{it == context.config.end() ? std::string{} : it->second};
@@ -1037,12 +1005,12 @@ std::optional<CompileTimeValue> ConditionalEvaluator::Impl::Eval(const Expr &exp
             if (!name) {
                 return std::nullopt;
             }
-            if (!std::ranges::contains(TargetFeatureVariants, *name)) {
+            if (!Target::FindCpuFeature(*name)) {
                 EmitError(e->location, "unknown target feature '." + *name + "'");
                 reportedError = true;
                 return std::nullopt;
             }
-            return Value{TargetHasFeature(*name)};
+            return Value{Target::HasCpuFeature(context.target.cpu_features, *name)};
         }
         case K::BuildProfile:
             return Value{std::string(context.ProfileName())};
@@ -1077,8 +1045,7 @@ std::optional<CompileTimeValue> ConditionalEvaluator::Impl::Eval(const Expr &exp
             return Value{context.buildInfo.Timestamp()};
         case K::CompilerHasFeature: {
             const auto feature = IntrinsicArgument(*e);
-            return feature ? std::optional<Value>{Value{std::ranges::contains(CompilerFeatures, *feature)}}
-                           : std::nullopt;
+            return feature ? std::optional<Value>{Value{CompilerHasFeature(*feature)}} : std::nullopt;
         }
         case K::Config: {
             const auto key = IntrinsicArgument(*e);

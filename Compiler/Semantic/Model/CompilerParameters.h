@@ -28,6 +28,17 @@ inline constexpr std::array<std::string_view, 7> SourceFields{"line",     "colum
 inline constexpr std::array<std::string_view, 1> CompilerFields{"version"};
 } // namespace CompilerParameterDetail
 
+/// Language and compiler capabilities reported by `#compiler.HasFeature`. Keep the names here rather than in a
+/// compiler stage: conditional evaluation and lowering both answer the same public query.
+inline constexpr std::array<std::string_view, 10> CompilerFeatureNames{
+    "conditional-compilation",    "namespaced-intrinsics",    "target-intrinsics",   "build-intrinsics",
+    "compiler-feature-detection", "source-location-defaults", "extern-symbol-names", "link-attribute",
+    "no-return-attribute",        "when-attribute"};
+
+[[nodiscard]] constexpr bool CompilerHasFeature(const std::string_view name) noexcept {
+    return std::ranges::contains(CompilerFeatureNames, name);
+}
+
 /// Every root the compiler supplies a value for, with the fields it fills in. `Config` carries no fields; its values
 /// are reached through its intrinsic methods.
 inline constexpr std::array<CompilerParameterRoot, 5> CompilerParameterRoots{{

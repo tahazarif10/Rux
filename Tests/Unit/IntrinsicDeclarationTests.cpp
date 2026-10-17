@@ -8,6 +8,7 @@
 #include "Semantic/Model/CompilerParameters.h"
 #include "Semantic/SemanticAnalyzer.h"
 #include "Syntax/Parser/Parser.h"
+#include "Target/Target.h"
 #include "Types/PrimitiveCatalog.h"
 
 #include <algorithm>
@@ -949,6 +950,37 @@ TEST_CASE("Core extends every primitive once and declares none") {
         CAPTURE(primitive.name);
         CHECK_EQ(documented[std::string(primitive.name)], 1U);
     }
+}
+
+TEST_CASE("Core TargetFeature variants match the compiler's CPU feature mapping") {
+    const auto path = std::filesystem::path(RUX_PACKAGES_DIR) / "Core" / "Src" / "Target.rux";
+    std::ifstream input(path, std::ios::binary);
+    REQUIRE(input);
+    const std::string source((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+    auto parsed = ParseIntrinsicSource(source, path.filename().string());
+
+    const EnumDecl *targetFeatures = nullptr;
+    for (const auto &item : parsed.module.items) {
+        if (const auto *candidate = dynamic_cast<const EnumDecl *>(item.get());
+            candidate && candidate->name == "TargetFeature") {
+            targetFeatures = candidate;
+            break;
+        }
+    }
+    REQUIRE(targetFeatures);
+    REQUIRE_FALSE(targetFeatures->IsVariant());
+
+    std::vector<std::string_view> declared;
+    for (const auto &variant : targetFeatures->variants) {
+        declared.push_back(variant.name);
+    }
+    std::vector<std::string_view> supplied;
+    for (const Target::CpuFeatureDefinition &feature : Target::CpuFeatureDefinitions) {
+        supplied.push_back(feature.name);
+    }
+    std::ranges::sort(declared);
+    std::ranges::sort(supplied);
+    CHECK_EQ(declared, supplied);
 }
 
 TEST_CASE("Core declares exactly the fields the compiler supplies") {

@@ -109,7 +109,6 @@ private:
     void CollectRuxImports(const std::vector<DeclPtr> &decls);
     [[nodiscard]] bool RequireRuxImport(const std::string &name, SourceLocation location);
     [[nodiscard]] std::optional<std::string> IntrinsicArgument(const IntrinsicExpr &expr, bool allowEnum = false);
-    [[nodiscard]] bool TargetHasFeature(std::string_view name) const;
     [[nodiscard]] std::optional<std::string_view> CompilerParamRoot(const Expr &expr) const;
     [[nodiscard]] bool CompilerParamFieldIsAccessible(const Expr &root, std::string_view field,
                                                       SourceLocation location);

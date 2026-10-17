@@ -5,9 +5,9 @@
 #include "Semantic/Model/CompilerParameters.h"
 #include "Semantic/SemanticVersion.h"
 #include "Target/Platform.h"
+#include "Target/Target.h"
 
 #include <algorithm>
-#include <array>
 #include <cassert>
 #include <cstdlib>
 #include <ctime>
@@ -50,43 +50,6 @@ std::string FormatBuildTime(const std::int64_t timestamp, const char *format) {
     return std::strftime(buffer, sizeof(buffer), format, &utc) == 0 ? std::string{} : std::string(buffer);
 }
 
-/// Whether the target being compiled for has a named CPU feature. Answered from target data, never from the host, so a
-/// cross build does not inherit the building machine's capabilities.
-bool TargetHasFeature(const CompileTimeContext &context, const std::string_view name) {
-    const Target::CpuFeatures features = context.target.cpu_features;
-    if (name == "SSE2")
-        return features.Has(Target::CpuFeature::SSE2);
-    if (name == "SSE3")
-        return features.Has(Target::CpuFeature::SSE3);
-    if (name == "SSSE3")
-        return features.Has(Target::CpuFeature::SSSE3);
-    if (name == "SSE41")
-        return features.Has(Target::CpuFeature::SSE41);
-    if (name == "SSE42")
-        return features.Has(Target::CpuFeature::SSE42);
-    if (name == "AVX")
-        return features.Has(Target::CpuFeature::AVX);
-    if (name == "AVX2")
-        return features.Has(Target::CpuFeature::AVX2);
-    if (name == "AVX512")
-        return features.Has(Target::CpuFeature::AVX512);
-    if (name == "NEON")
-        return features.Has(Target::CpuFeature::NEON);
-    if (name == "SVE")
-        return features.Has(Target::CpuFeature::SVE);
-    return false;
-}
-
-/// Whether this compiler implements a named language feature, letting source guard a construct that older releases
-/// would not accept.
-bool CompilerHasFeature(const std::string_view feature) {
-    static constexpr std::array features{
-        "conditional-compilation", "namespaced-intrinsics",      "target-intrinsics",
-        "build-intrinsics",        "compiler-feature-detection", "source-location-defaults",
-        "extern-symbol-names",     "no-return-attribute",        "when-attribute",
-        "link-attribute"};
-    return std::ranges::contains(features, feature);
-}
 } // namespace
 
 HirExprPtr AstToHirContext::LowerMatchSubject(const Expr &expression, const ValueConsumptionKind kind) {
@@ -316,7 +279,7 @@ HirExprPtr AstToHirContext::LowerCompilerParamCall(const std::string &root, cons
 
     if (root == "Target" && member == "HasFeature")
         return CompilerLiteral(call.location, TypeRef::MakeBool(),
-                               TargetHasFeature(context, argument) ? "true" : "false");
+                               Target::HasCpuFeature(context.target.cpu_features, argument) ? "true" : "false");
     if (root == "Compiler" && member == "HasFeature")
         return CompilerLiteral(call.location, TypeRef::MakeBool(), CompilerHasFeature(argument) ? "true" : "false");
     if (root == "Config" && member == "Get") {
@@ -423,7 +386,7 @@ HirExprPtr AstToHirContext::LowerIntrinsicExpr(const IntrinsicExpr &expression) 
         break;
     case Kind::TargetFeature:
         type = TypeRef::MakeBool();
-        value = TargetHasFeature(context, intrinsicArgument()) ? "true" : "false";
+        value = Target::HasCpuFeature(context.target.cpu_features, intrinsicArgument()) ? "true" : "false";
         break;
     case Kind::BuildProfile:
         type = TypeRef::MakeText(TypeRef::Kind::Char8);

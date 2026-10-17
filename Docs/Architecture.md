@@ -76,6 +76,11 @@ These are maintained contracts, not a one-time migration record. Changes to them
 
 `RuxTypes` owns resolved type values, primitive descriptions, value-property records, case forms, and destruction recipes. Semantic analysis computes these facts; HIR, LIR, optimization and backends consume them without linking the analyzer. A `TypeRef` is a small handle to an interned, immutable `TypeNode`: each distinct structure is stored once for the life of the process (shared by every thread, built outside a sharded lock), the node caches its spelling, its structural hash, and the identity node `operator==` compares, so copying, comparing, hashing, and spelling a type never allocate. The hash is computed from the structure rather than an address, so tables keyed by types iterate in the same order on every run. `RuxTokens` owns token values and spellings, `RuxAst` owns syntax data and documentation values, and `RuxSemanticModel` owns accepted semantic results and compile-time value descriptions. Parser results have their own header, independent of parser state. The stage facades and `RuxCore` compatibility target remain available.
 
+Compiler-supplied capabilities have the same single-owner rule. `Target/Target.h` owns the language-facing target CPU
+feature names and their bit mappings, while `Semantic/Model/CompilerParameters.h` owns compiler feature names and the
+fields of compiler-supplied context values. Conditional evaluation and AST-to-HIR lowering consume those definitions
+rather than maintaining stage-local copies.
+
 ## Component Ownership
 
 Semantic checking lives in `Semantic/Analysis`, conditional folding in `Semantic/Conditional`, and accepted result data and inspection in `Semantic/Model`. The public analyzer folds and orders modules, then runs a concrete private `AnalysisContext` over grouped `AnalysisInputs` and one `SemanticFacts` result. Type resolution, constant checking, assignment compatibility, callable resolution, declarations, imports, layout, identities, expression dispatch and generic instantiation have separate translation units. The context has no implementation inheritance or virtual dispatch. Moving the result transfers its tables without changing the AST addresses used as keys.

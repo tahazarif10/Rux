@@ -348,6 +348,8 @@ Introduces compile-time programming (`when`, `intrinsic`, `#`-prefixed compiler 
 
 ### Changed
 
+- **Compile-time feature capability ownership** — target CPU feature names and compiler language feature names now each have one shared definition consumed by conditional folding and AST-to-HIR lowering, so the two stages cannot silently drift on `#target.HasFeature` or `#compiler.HasFeature`. A unit contract parses Core's public `TargetFeature` enum and compares it with the target mapping, while the Core compiler package exercises known and unknown compiler feature names through ordinary lowering.
+
 #### Language
 
 - **Character casts check their value** — an `as` cast to a character width stops the program with `Panic: invalid character cast` when the value is outside the width's range or, for a scalar width, a surrogate, where it used to keep the low bits: `c16'€' as char8` now panics instead of giving `0xAC`. Mask the value first to keep its low bits deliberately. A constant cast is rejected while compiling whatever its spelling, so `-1i32 as char32`, `-(1i8) as char8`, a named negative constant, and a negative suffixed element of a constant array, which used to compile, are errors. A float source converts as it would to `uint64`, saturating, before the check.
