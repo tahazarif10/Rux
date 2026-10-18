@@ -28,6 +28,12 @@ func Ip(text: char8[..]) -> IpAddress {
 }
 
 func Main() -> int {
+    // A single colon must not be interpreted as the unspecified IPv6 address (::).
+    Assert(Ipv6Address::Parse(":") == none, "a lone colon is not an IPv6 address");
+    Assert(IpAddress::Parse(":") == none, "a lone colon is not any IP address");
+    Assert(Ipv6Address::Parse(":1") == none && Ipv6Address::Parse("1:") == none,
+           "single leading or trailing colons are invalid");
+
     // IPv4-mapped addresses read and write back with their dotted tail; others keep the hexadecimal groups.
     Assert(Text(Ip("::ffff:192.0.2.1"), "::ffff:192.0.2.1"), "a mapped address writes its IPv4 tail");
     Assert(Text(Ip("::FFFF:c000:0201"), "::ffff:192.0.2.1"), "however it was written");
