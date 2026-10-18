@@ -33,6 +33,10 @@ func Main() -> int {
     Assert(IpAddress::Parse(":") == none, "a lone colon is not any IP address");
     Assert(Ipv6Address::Parse(":1") == none && Ipv6Address::Parse("1:") == none,
            "single leading or trailing colons are invalid");
+    let compressed = Ipv6Address::Parse("::") ?? Ipv6Address::Localhost();
+    Assert(compressed.IsUnspecified(), "two colons still produce the unspecified IPv6 address");
+    let loopback = Ipv6Address::Parse("::1") ?? Ipv6Address::Unspecified();
+    Assert(loopback.IsLoopback(), "two-colon loopback shorthand remains valid");
 
     // IPv4-mapped addresses read and write back with their dotted tail; others keep the hexadecimal groups.
     Assert(Text(Ip("::ffff:192.0.2.1"), "::ffff:192.0.2.1"), "a mapped address writes its IPv4 tail");
