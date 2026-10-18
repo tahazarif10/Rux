@@ -218,8 +218,8 @@ extend Ipv6Address {
         var count: uint = 0;
         var gap: uint = 9;
         var index: uint = 0;
-        if text.length >= 2u && text[0] == ':' {
-            if text[1] != ':' { return none; }
+        if text.length > 0u && text[0] == ':' {
+            if text.length < 2u || text[1] != ':' { return none; }
             index = 2;
             gap = 0;
         }
